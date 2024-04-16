@@ -15,23 +15,33 @@ module Zoom
         return response unless response.is_a?(Hash) && response.key?('code')
 
         code = response['code']
-        error_hash = build_error(response)
+        error_message = build_error_message(response)
+        error_hash = build_error_hash(response, http_code)
 
-        raise AuthenticationError, error_hash if code == 124
-        raise BadRequest, error_hash if http_code == 400
-        raise Unauthorized, error_hash if http_code == 401
-        raise Forbidden, error_hash if http_code == 403
-        raise NotFound, error_hash if http_code == 404
-        raise Conflict, error_hash if http_code == 409
-        raise TooManyRequests, error_hash if http_code == 429
-        raise InternalServerError, error_hash if http_code == 500
-        raise Error.new(error_hash, error_hash)
+        raise AuthenticationError.new(error_message, error_hash) if code == 124
+        raise BadRequest.new(error_message, error_hash) if http_code == 400
+        raise Unauthorized.new(error_message, error_hash) if http_code == 401
+        raise Forbidden.new(error_message, error_hash) if http_code == 403
+        raise NotFound.new(error_message, error_hash) if http_code == 404
+        raise Conflict.new(error_message, error_hash) if http_code == 409
+        raise TooManyRequests.new(error_message, error_hash) if http_code == 429
+        raise InternalServerError.new(error_message, error_hash) if http_code == 500
+        raise Error.new(error_message, error_hash)
       end
 
-      def build_error(response)
+      def build_error_message(response)
         error_hash = { base: response['message']}
         error_hash[response['message']] = response['errors'] if response['errors']
         error_hash
+      end
+
+      def build_error_hash(response, status_code)
+        {
+          message: response['message'],
+          code: response['code'],
+          errors: response['errors'],
+          http_status_code: status_code
+        }.compact
       end
 
       def parse_response(http_response)

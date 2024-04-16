@@ -69,6 +69,48 @@ describe Zoom::Utils do
       response = { 'code' => 180, 'message' => 'Im a teapot' }
       expect { Utils.raise_if_error!(response, 418) }.to raise_error(Zoom::Error)
     end
+
+    it 'raises an error with error_hash containing properties provided by zoom - without errors array' do
+      zoom_api_response = {
+        "code": 300,
+        "message": "Request Body should be a valid JSON object."
+      }
+
+      begin
+        Utils.raise_if_error!(zoom_api_response, 400)
+      rescue Zoom::Error => e
+        expect(e.error_hash[:message]).to eq('Request Body should be a valid JSON object.')
+        expect(e.error_hash[:code]).to eq(300)
+        expect(e.error_hash).not_to have_key(:errors)
+        expect(e.error_hash[:http_status_code]).to eq(400)
+      end
+    end
+
+    it 'raises an error with error_hash containing properties provided by zoom - with errors array' do
+      zoom_api_response = {
+        "code": 300,
+        "message": "Validation Failed.",
+        "errors": [
+          {
+            "field": "user_info.email",
+            "message": "Invalid field."
+          },
+          {
+            "field": "user_info.type",
+            "message": "Invalid field."
+          }
+        ]
+      }
+
+      begin
+        Utils.raise_if_error!(zoom_api_response, 400)
+      rescue Zoom::Error => e
+        expect(e.error_hash[:message]).to eq('Validation Failed.')
+        expect(e.error_hash[:code]).to eq(300)
+        expect(e.error_hash[:errors].length).to eq(2)
+        expect(e.error_hash[:http_status_code]).to eq(400)
+      end
+    end
   end
 
   describe '#extract_options!' do
